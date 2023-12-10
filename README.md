@@ -1,2 +1,2 @@
 # stockplatform
-STOC_platform
+Stock_platform
