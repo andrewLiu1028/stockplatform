@@ -317,8 +317,6 @@ def stock_list(request):
 
     return render(request, 'stockinfo/stock_list.html', context)
 
-
-
 # stock_table
 def stock_table(request):
     # Get the stock data and indicators data from the session.
