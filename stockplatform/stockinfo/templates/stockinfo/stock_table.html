@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>股票表格</title>
+    
+    <!-- 引入Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    
+    <style>
+        .buy-signal {
+            color: red;
+        }
+        .sell-signal {
+            color: green;
+        }
+        .neutral-signal {
+            color: black;
+        }
+        .buy-signal::before {
+            content: "▲ "; /* 上升三角形 */
+        }
+        .sell-signal::before {
+            content: "▼ "; /* 下降三角形 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>股票表格</h1>
+        <button class="btn btn-primary" onclick="location.href='{% url 'stock_list' %}'">返回查詢</button>
+        {% if not data_empty %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>開盤</th>
+                        <th>最高</th>
+                        <th>最低</th>
+                        <th>收盤</th>
+                        <th>成交量</th>
+                        <th>短期均線和中期均線交叉信號</th>
+                        <th>K 值和 D 值交叉信號</th>
+                        <th>RSI 信號</th>
+                        <th>MACD 信號</th>
+                        <th>布林帶信號</th>
+                        <th>OBV 信號</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in stock_data_json|dictsortreversed:"Date" %}
+                    <tr>
+                        <td>{{ data.Date }}</td>
+                        <td>{{ data.Open|floatformat:2 }}</td>
+                        <td>{{ data.High|floatformat:2 }}</td>
+                        <td>{{ data.Low|floatformat:2 }}</td>
+                        <td>{{ data.Close|floatformat:2 }}</td>
+                        <td>{{ data.Volume }}</td>
+                        <td class="{% if data.ma_cross_signal == 1 %}buy-signal{% elif data.ma_cross_signal == -1 %}sell-signal{% else %}neutral-signal{% endif %}">{{ data.ma_cross_signal }}</td>
+                        <td class="{% if data.kd_cross_signal == 1 %}buy-signal{% elif data.kd_cross_signal == -1 %}sell-signal{% else %}neutral-signal{% endif %}">{{ data.kd_cross_signal }}</td>
+                        <td class="{% if data.rsi_signal == 1 %}buy-signal{% elif data.rsi_signal == -1 %}sell-signal{% else %}neutral-signal{% endif %}">{{ data.rsi_signal }}</td>
+                        <td class="{% if data.macd_signal == 1 %}buy-signal{% elif data.macd_signal == -1 %}sell-signal{% else %}neutral-signal{% endif %}">{{ data.macd_signal }}</td>
+                        <td class="{% if data.bollinger_bands_signal == 1 %}buy-signal{% elif data.bollinger_bands_signal == -1 %}sell-signal{% else %}neutral-signal{% endif %}">{{ data.bollinger_bands_signal }}</td>
+                        <td class="{% if data.obv_signal == 1 %}buy-signal{% elif data.obv_signal == -1 %}sell-signal{% else %}neutral-signal{% endif %}">{{ data.obv_signal }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>沒有找到相關股價訊息。</p>
+        {% endif %}
+        
+    </div>
+    <!-- 引入Bootstrap JS和jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
+

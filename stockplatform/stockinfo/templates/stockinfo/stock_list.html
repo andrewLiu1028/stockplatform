@@ -1,0 +1,364 @@
+#股票資訊平台 首頁
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票查詢</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: '微軟正黑體', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+            color: #333;
+            text-align: center;
+        }
+        .chart {
+            width: 90%;
+            max-width: 900px;
+            margin: 20px auto;
+        }
+        form {
+            margin: 20px auto;
+            width: 90%;
+            max-width: 900px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 90%;
+            max-width: 900px;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .buy-signal {
+            color: red;
+        }
+        .sell-signal {
+            color: green;
+        }
+        .neutral-signal {
+            color: black;
+        }
+        .buy-signal::before {
+            content: "▲ "; /* 上升三角形 */
+        }
+        .sell-signal::before {
+            content: "▼ "; /* 下降三角形 */
+        }
+    </style>
+</head>
+<body>
+    <h1>股票查詢</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">查詢</button>
+    </form>
+
+    {% if not data_empty %}
+        <div id="stock-chart" class="chart"></div>
+                <!-- 查看股價細節按鈕 -->
+                <a href="{% url 'stock_table' %}" class="btn btn-primary">查看股價細節</a>
+
+        <!-- 股價K線圖與成交量 -->
+        <div class="chart">
+            <h2>股價K線圖與成交量</h2>
+            <div id="candlestick-chart" class="chart"></div>
+            <div id="volume-chart" class="chart"></div>
+        </div>
+
+
+        <!-- 交易策略統整表 -->
+        <div id="performance-table"></div>
+            
+        <!-- 技術指標圖表 -->
+        <div class="chart">
+            <h2>技術指標</h2>
+            
+            <!-- 移動平均線 -->
+            <div id="ma-chart" class="chart"></div>
+
+            <!-- K和D -->
+            <div id="kd-chart" class="chart"></div>
+
+            <!-- RSI -->
+            <div id="rsi-chart" class="chart"></div>
+
+            <!-- MACD和Signal -->
+            <div id="macd-chart" class="chart"></div>
+
+            <!-- 布林通道 -->
+            <div id="bbands-chart" class="chart"></div>
+
+            <!-- OBV -->
+            <div id="obv-chart" class="chart"></div>
+        </div>
+
+        <script>
+            var stockData = {{ stock_data_json|safe }};
+            var indicatorsData = {{ indicators_data|safe }};
+        
+            var layout = {
+                title: '股價K線圖與成交量',
+                xaxis: {
+                    type: 'category',
+                    categoryorder: 'category ascending',
+                    rangeslider: {visible: true}
+                },
+                yaxis: {
+                    title: '股價',
+                    domain: [0.5, 1]
+                },
+                yaxis2: {
+                    title: '成交量',
+                    domain: [0, 0.2],
+                    anchor: 'x'
+                },
+                margin: { l: 50, r: 50, b: 0, t: 50, pad: 4 },
+                showlegend: false
+            };
+
+            // 股價K線圖
+            var traceCandlestick = {
+                x: stockData.map(data => data.Date),
+                close: stockData.map(data => data.Close),
+                high: stockData.map(data => data.High),
+                low: stockData.map(data => data.Low),
+                open: stockData.map(data => data.Open),
+                type: 'candlestick',
+                xaxis: 'x',
+                yaxis: 'y1'
+            };
+
+            // 成交量
+            var traceVolume = {
+                x: stockData.map(data => data.Date),
+                y: stockData.map(data => data.Volume),
+                type: 'bar',
+                xaxis: 'x',
+                yaxis: 'y2',
+                marker: {
+                    color: 'rgba(100, 100, 100, 0.5)',
+                }
+            };
+
+            // 技術指標圖表
+            var layoutIndicators = {
+                title: '技術指標',
+                xaxis: {
+                    type: 'category',
+                    categoryorder: 'category ascending',
+                    rangeslider: {visible: true}
+                },
+                margin: { l: 50, r: 50, b: 0, t: 50, pad: 4 },
+                showlegend: true
+            };
+
+            // 移動平均線
+            var traceShortMA = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.short_ma,
+                mode: 'lines',
+                name: '短期MA',
+                xaxis: 'x',
+                yaxis: 'y1'
+            };
+
+            var traceMediumMA = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.medium_ma,
+                mode: 'lines',
+                name: '中期MA',
+                xaxis: 'x',
+                yaxis: 'y1'
+            };
+
+            var traceLongMA = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.long_ma,
+                mode: 'lines',
+                name: '長期MA',
+                xaxis: 'x',
+                yaxis: 'y1'
+            };
+
+            // K指標
+            var traceK = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.k,
+                mode: 'lines',
+                name: 'K值',
+                xaxis: 'x',
+                yaxis: 'y2'
+            };
+
+            // D指標
+            var traceD = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.d,
+                mode: 'lines',
+                name: 'D值',
+                xaxis: 'x',
+                yaxis: 'y2'
+            };
+
+            // RSI指標
+            var traceRSI = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.rsi,
+                mode: 'lines',
+                name: 'RSI',
+                xaxis: 'x',
+                yaxis: 'y3'
+            };
+
+            // MACD指標
+            var traceMACD = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.macd,
+                mode: 'lines',
+                name: 'MACD',
+                xaxis: 'x',
+                yaxis: 'y4'
+            };
+
+            // Signal指標
+            var traceSignal = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.signal,
+                mode: 'lines',
+                name: 'Signal',
+                xaxis: 'x',
+                yaxis: 'y4'
+            };
+
+            // 布林通道上軌
+            var traceUpperBand = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.upper_band,
+                fill: 'tonexty',
+                fillcolor: 'rgba(0,100,80,0.2)',
+                mode: 'lines',
+                name: '布林通道上軌',
+                xaxis: 'x',
+                yaxis: 'y5'
+            };
+
+            // 布林通道中軌
+            var traceMiddleBand = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.middle_band,
+                mode: 'lines',
+                name: '布林通道中軌',
+                xaxis: 'x',
+                yaxis: 'y5'
+            };
+
+            // 布林通道下軌
+            var traceLowerBand = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.lower_band,
+                mode: 'lines',
+                name: '布林通道下軌',
+                xaxis: 'x',
+                yaxis: 'y5'
+            };
+
+            // OBV指標
+            var traceOBV = {
+                x: stockData.map(data => data.Date),
+                y: indicatorsData.obv,
+                mode: 'lines',
+                name: 'OBV',
+                xaxis: 'x',
+                yaxis: 'y6'
+            };
+
+            var config = {responsive: true}
+            Plotly.newPlot('candlestick-chart', [traceCandlestick, traceVolume], layout, config);
+            Plotly.newPlot('ma-chart', [traceShortMA, traceMediumMA, traceLongMA], layoutIndicators, config);
+            Plotly.newPlot('kd-chart', [traceK, traceD], layoutIndicators, config);
+            Plotly.newPlot('rsi-chart', [traceRSI], layoutIndicators, config);
+            Plotly.newPlot('macd-chart', [traceMACD, traceSignal], layoutIndicators, config);
+            Plotly.newPlot('bbands-chart', [traceUpperBand, traceMiddleBand, traceLowerBand], layoutIndicators, config);
+            Plotly.newPlot('obv-chart', [traceOBV], layoutIndicators, config);
+
+            // 添加交易訊號到技術指標圖表
+            addSignalToChart('ma-chart', indicatorsData.ma_cross_signals, '短期MA');
+            addSignalToChart('ma-chart', indicatorsData.ma_cross_signals, '中期MA');
+            addSignalToChart('ma-chart', indicatorsData.ma_cross_signals, '長期MA');
+            addSignalToChart('kd-chart', indicatorsData.kd_cross_signals, 'K值');
+            addSignalToChart('kd-chart', indicatorsData.kd_cross_signals, 'D值');
+            addSignalToChart('rsi-chart', indicatorsData.rsi_signals, 'RSI');
+            addSignalToChart('macd-chart', indicatorsData.macd_signals, 'MACD');
+            addSignalToChart('macd-chart', indicatorsData.macd_signals, 'Signal');
+            addSignalToChart('bbands-chart', indicatorsData.bollinger_bands_signals, '布林通道上軌');
+            addSignalToChart('bbands-chart', indicatorsData.bollinger_bands_signals, '布林通道中軌');
+            addSignalToChart('bbands-chart', indicatorsData.bollinger_bands_signals, '布林通道下軌');
+            addSignalToChart('obv-chart', indicatorsData.obv_signals, 'OBV');
+
+            function addSignalToChart(chartId, signals, indicatorName) {
+                var chart = document.getElementById(chartId);
+                var traces = chart.data;
+                var indicatorIndex = 0;
+
+                for (var i = 0; i < traces.length; i++) {
+                    var trace = traces[i];
+                    var signal = signals[indicatorIndex];
+                    
+
+                    if (signal === 1) {
+                        // 買入訊號，使用綠色字體和上升三角形箭頭
+                        trace.text = indicatorName + ' ▲';
+                        trace.textposition = 'top';
+                        trace.textfont = { size: 14, color: 'green' }; // 修改字體大小和顏色
+                    } else if (signal === -1) {
+                        // 賣出訊號，使用紅色字體和下降三角形箭頭
+                        trace.text = indicatorName + ' ▼';
+                        trace.textposition = 'bottom';
+                        trace.textfont = { size: 14, color: 'red' }; // 修改字體大小和顏色
+                    } else {
+                        // 中立訊號，使用黑色字體
+                        trace.text = '';
+                        trace.textposition = '';
+                        trace.textfont = { color: 'black' };
+                    }
+                    
+                    // 移到下一個指標的訊號
+                    indicatorIndex++;
+                }
+
+                Plotly.update(chartId, traces);
+            }
+        </script>
+    {% else %}
+        <p>沒有找到相關股價資訊，請重新輸入查詢條件。</p>
+    {% endif %}
+
+</body>
+</html>
