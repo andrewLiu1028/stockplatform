@@ -83,7 +83,7 @@ def calculate_technical_indicators(stock_data):
     # 計算MA指標
     short_ma = talib.MA(stock_data['Close'], timeperiod=5)
     medium_ma = talib.MA(stock_data['Close'], timeperiod=20)
-    long_ma = talib.MA(stock_data['Close'], timeperiod=50)
+    long_ma = talib.MA(stock_data['Close'], timeperiod=60)
 
     # 計算KD指標
     high = stock_data['High'].values
